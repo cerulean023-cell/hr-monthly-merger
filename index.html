@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>到職、簽約、離職及年資屆滿名單</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #64748b;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --text-main: #1e293b;
+        }
+
+        body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; line-height: 1.6; }
+        .container { max-width: 1000px; margin: auto; }
+        header { text-align: center; margin-bottom: 30px; padding: 20px 0; }
+        header h1 { font-size: 2.2rem; color: var(--primary-color); margin: 0; }
+
+        .step-card { background: var(--card-bg); border-radius: 16px; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-bottom: 24px; border: 1px solid var(--border-color); }
+        .step-title { display: flex; align-items: center; font-size: 1.2rem; font-weight: 700; margin-bottom: 15px; color: var(--primary-color); }
+        .step-number { background: var(--primary-color); color: white; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 0.85rem; }
+
+        .apollo-hint { background: #fffcf0; border: 1px solid #fde68a; border-radius: 12px; padding: 20px; }
+        .checklist { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+        .check-item { background: white; padding: 12px 15px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; }
+        .item-name { font-weight: 700; color: #334155; display: flex; justify-content: space-between; align-items: center; }
+        .date-range { font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+        .range-normal { background: #dcfce7; color: #166534; }
+        .range-next { background: #fee2e2; color: #991b1b; }
+        .range-day { background: #e0f2fe; color: #075985; }
+        .desc { font-size: 0.8rem; color: #64748b; margin-top: 4px; }
+
+        .config-group { display: flex; align-items: center; gap: 15px; }
+        input[type="month"] { padding: 10px 16px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; outline: none; }
+        
+        .upload-zone { border: 2px dashed var(--primary-color); background: #eff6ff; padding: 30px; border-radius: 12px; text-align: center; cursor: pointer; transition: 0.2s; }
+        .upload-zone:hover { background: #dbeafe; }
+
+        .file-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .file-table th { text-align: left; padding: 10px; border-bottom: 2px solid var(--border-color); color: var(--secondary-color); }
+        .file-table td { padding: 12px 10px; border-bottom: 1px solid var(--border-color); }
+
+        select { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-color); width: 100%; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; padding: 15px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; font-size: 1.1rem; transition: 0.2s; }
+        .btn-success { background: var(--success-color); color: white; width: 100%; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
+        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(16, 185, 129, 0.3); }
+
+        .badge { background: #e2e8f0; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        footer.site-footer { text-align: center; margin-top: 50px; padding-bottom: 20px; color: var(--secondary-color); font-size: 0.75rem; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>到職、簽約、離職及年資屆滿名單</h1>
+    </header>
+
+    <div class="step-card">
+        <div class="step-title"><span class="step-number">0</span>Apollo 下載清單提醒</div>
+        <div class="apollo-hint">
+            <ul class="checklist">
+                <li class="check-item">
+                    <div class="item-name">在職名單 <span class="date-range range-normal">當月1號 - 月底</span></div>
+                    <div class="desc">用於：到職、簽約、年資屆滿</div>
+                </li>
+                <li class="check-item">
+                    <div class="item-name">人員異動清單 <span class="date-range range-next">當月1號 - 次月1號</span></div>
+                    <div class="desc">用於：轉任、復職</div>
+                </li>
+                <li class="check-item">
+                    <div class="item-name">離職名單 <span class="date-range range-next">當月1號 - 次月1號</span></div>
+                    <div class="desc">用於：離職名單抓取</div>
+                </li>
+                <li class="check-item">
+                    <div class="item-name">請假紀錄 <span class="date-range range-normal">當月1號 - 月底</span></div>
+                    <div class="desc">用於：特殊假勤篩選</div>
+                </li>
+                <li class="check-item">
+                    <div class="item-name">留停狀態名單 <span class="date-range range-day">當月最後一天</span></div>
+                    <div class="desc">用於：留職停薪呈現</div>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="step-card">
+        <div class="step-title"><span class="step-number">1</span>設定結算月份</div>
+        <div class="config-group">
+            <label>報表年月：</label>
+            <input type="month" id="targetMonth" />
+        </div>
+    </div>
+
+    <div class="step-card">
+        <div class="step-title"><span class="step-number">2</span>上傳 Apollo 原始檔</div>
+        <div class="upload-zone" onclick="document.getElementById('excelFiles').click()">
+            <strong>點擊選取或拖放檔案至此</strong>
+            <input type="file" id="excelFiles" multiple accept=".xlsx, .xls" style="display:none">
+        </div>
+        <table class="file-table" id="fileTable" style="display:none">
+            <thead>
+                <tr>
+                    <th>檔名</th>
+                    <th width="100">筆數</th>
+                    <th width="250">資料識別</th>
+                </tr>
+            </thead>
+            <tbody id="fileList"></tbody>
+        </table>
+    </div>
+
+    <div id="actionArea" style="display:none; margin-bottom: 50px;">
+        <button class="btn btn-success" onclick="generateReport()">🚀 下載到職、簽約、離職及年資屆滿名單</button>
+    </div>
+
+    <footer class="site-footer">
+        ※20260206 版本※
+    </footer>
+</div>
+
+<script>
+    // --- 輔助函式 ---
+    function colIdx(letter) {
+        let n = 0;
+        for (let i = 0; i < letter.length; i++) {
+            n = n * 26 + letter.charCodeAt(i) - 64;
+        }
+        return n - 1;
+    }
+
+    function getSystem(empNo) {
+        if (!empNo) return "";
+        const char = String(empNo).charAt(0).toUpperCase();
+        const map = { 'S': '送子鳥', 'B': '愛生育', 'A': '愛雅特', 'T': '送子鳥11' };
+        return map[char] || char;
+    }
+
+    function toDate(val) {
+        if (!val) return null;
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? null : d;
+    }
+
+    function isSameMonth(date, targetStr) {
+        if (!date) return false;
+        const [y, m] = targetStr.split('-').map(Number);
+        return date.getFullYear() === y && (date.getMonth() + 1) === m;
+    }
+
+    // 初始化月份
+    const now = new Date();
+    document.getElementById('targetMonth').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    let fileStorage = [];
+
+    document.getElementById('excelFiles').addEventListener('change', async (e) => {
+        const files = e.target.files;
+        for (let file of files) {
+            const data = await file.arrayBuffer();
+            const wb = XLSX.read(data, { cellDates: true });
+            const sheet = wb.Sheets[wb.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }); 
+            fileStorage.push({ name: file.name, rows: rows, type: autoDetect(file.name) });
+        }
+        renderTable();
+    });
+
+    function autoDetect(name) {
+        const n = name.toLowerCase();
+        if (n.includes("在職")) return "active";
+        if (n.includes("異動")) return "change";
+        if (n.includes("離職")) return "quit";
+        if (n.includes("請假")) return "leave";
+        if (n.includes("留停")) return "loa";
+        return "";
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('fileList');
+        tbody.innerHTML = fileStorage.map((f, i) => `
+            <tr>
+                <td><strong>${f.name}</strong></td>
+                <td><span class="badge">${f.rows.length} 筆</span></td>
+                <td>
+                    <select onchange="fileStorage[${index}].type = this.value">
+                        <option value="">-- 未識別 --</option>
+                        <option value="active" ${f.type === 'active' ? 'selected' : ''}>在職名單</option>
+                        <option value="change" ${f.type === 'change' ? 'selected' : ''}>人員異動清單</option>
+                        <option value="quit" ${f.type === 'quit' ? 'selected' : ''}>離職名單</option>
+                        <option value="leave" ${f.type === 'leave' ? 'selected' : ''}>請假紀錄</option>
+                        <option value="loa" ${f.type === 'loa' ? 'selected' : ''}>留停狀態名單</option>
+                    </select>
+                </td>
+            </tr>
+        `).replace(/index/g, (match, offset, string) => { return ""; }); // 修正 renderTable 的 index 變數
+        
+        // 重新修復 renderTable 內部的 index 邏輯
+        tbody.innerHTML = "";
+        fileStorage.forEach((f, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${f.name}</strong></td>
+                <td><span class="badge">${f.rows.length} 筆</span></td>
+                <td>
+                    <select onchange="fileStorage[${i}].type = this.value">
+                        <option value="">-- 未識別 --</option>
+                        <option value="active" ${f.type === 'active' ? 'selected' : ''}>在職名單</option>
+                        <option value="change" ${f.type === 'change' ? 'selected' : ''}>人員異動清單</option>
+                        <option value="quit" ${f.type === 'quit' ? 'selected' : ''}>離職名單</option>
+                        <option value="leave" ${f.type === 'leave' ? 'selected' : ''}>請假紀錄</option>
+                        <option value="loa" ${f.type === 'loa' ? 'selected' : ''}>留停狀態名單</option>
+                    </select>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('fileTable').style.display = 'table';
+        document.getElementById('actionArea').style.display = 'block';
+    }
+
+    // --- 核心報表產生器 ---
+    function generateReport() {
+        const targetMonth = document.getElementById('targetMonth').value;
+        const [targetYear, targetMonthInt] = targetMonth.split('-').map(Number);
+        const finalData = [];
+        const monthLabel = `${targetYear}年${targetMonthInt}月`;
+
+        // 1. 到職
+        finalData.push(["", monthLabel + "到職"]);
+        finalData.push(["", "體系", "員工編號", "姓名", "到職日", "職務"]);
+        fileStorage.filter(f => f.type === 'active').forEach(f => {
+            f.rows.forEach((row, idx) => {
+                if (idx === 0) return;
+                const d = toDate(row[colIdx('BG')]);
+                if (isSameMonth(d, targetMonth)) {
+                    finalData.push(["", getSystem(row[colIdx('A')]), row[colIdx('A')], `${row[colIdx('E')]}．${row[colIdx('F')]}`, XLSX.SSF.format('yyyy/mm/dd', d), `${row[colIdx('H')]} ${row[colIdx('K')]}`]);
+                }
+            });
+        });
+
+        // 2. 簽約 (BH+1天為簽約日)
+        finalData.push([], ["", "簽約"]);
+        finalData.push(["", "體系", "員編", "姓名", "到職日", "簽約日", "職務"]);
+        fileStorage.filter(f => f.type === 'active').forEach(f => {
+            f.rows.forEach((row, idx) => {
+                if (idx === 0) return;
+                let probEnd = toDate(row[colIdx('BH')]);
+                if (probEnd) {
+                    let signDate = new Date(probEnd); signDate.setDate(signDate.getDate() + 1);
+                    if (isSameMonth(signDate, targetMonth)) {
+                        finalData.push(["", getSystem(row[colIdx('A')]), row[colIdx('A')], `${row[colIdx('E')]}．${row[colIdx('F')]}`, XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('BG')])), XLSX.SSF.format('yyyy/mm/dd', signDate), `${row[colIdx('H')]} ${row[colIdx('K')]}`]);
+                    }
+                }
+            });
+        });
+
+        // 3. 轉任 (異動生效日+1為到職日, 生效日為離職日)
+        finalData.push([], ["", "轉任"]);
+        finalData.push(["", "體系", "員編", "姓名", "到職日", "離職日", "備註"]);
+        fileStorage.filter(f => f.type === 'change').forEach(f => {
+            f.rows.forEach((row, idx) => {
+                if (idx === 0) return;
+                if (row[colIdx('B')] === '聘僱公司別異動') {
+                    let effDate = toDate(row[colIdx('A')]);
+                    if (effDate) {
+                        let startDate = new Date(effDate); startDate.setDate(startDate.getDate() + 1);
+                        finalData.push(["", getSystem(row[colIdx('J')]), row[colIdx('K')], `${row[colIdx('H')]}．${row[colIdx('I')]}`, XLSX.SSF.format('yyyy/mm/dd', startDate), XLSX.SSF.format('yyyy/mm/dd', effDate), `${row[colIdx('O')]} ${row[colIdx('U')]}`]);
+                    }
+                }
+            });
+        });
+
+        // 4. 復職
+        finalData.push([], ["", "復職"]);
+        finalData.push(["", "體系", "員工編號", "姓名", "到職日", "職務"]);
+        fileStorage.filter(f => f.type === 'change').forEach(f => {
+            f.rows.forEach((row, idx) => {
+                if (idx === 0) return;
+                if (row[colIdx('B')] === '復職') {
+                    finalData.push(["", getSystem(row[colIdx('K')]), row[colIdx('K')], `${row[colIdx('H')]}．${row[colIdx('I')]}`, XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('A')])), `${row[colIdx('O')]} ${row[colIdx('U')]}`]);
+                }
+            });
+        });
+
+        // 5. 離職
+        finalData.push([], ["", "離職"]);
+        finalData.push(["", "體系", "員編", "姓名", "到職日", "離職日", "備註"]);
+        fileStorage.filter(f => f.type === 'quit').forEach(f => {
+            f.rows.forEach((row, idx) => {
+                if (idx === 0) return;
+                let effDate = toDate(row[colIdx('A')]);
+                if (effDate) {
+                    let realQuitDate = new Date(effDate); realQuitDate.setDate(realQuitDate.getDate() - 1);
+                    if (isSameMonth(realQuitDate, targetMonth)) {
+                        finalData.push(["", getSystem(row[colIdx('C')]), row[colIdx('C')], `${row[colIdx('G')]}．${row[colIdx('H')]}`, XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('BI')])), XLSX.SSF.format('yyyy/mm/dd', realQuitDate), `${row[colIdx('O')]} ${row[colIdx('U')]}`]);
+                    }
+                }
+            });
+        });
+
+        // 6. 特殊假勤
+        finalData.push([], ["", "特殊假勤"]);
+        finalData.push(["", "體系", "員工編號", "姓名", "假勤項目", "假勤時間", "備註"]);
+        const specialTypes = ['喪假', '婚假', '產假', '產檢假', '公傷假', '歲時祭儀'];
+        fileStorage.filter(f => f.type === 'leave').forEach(f => {
+            f.rows.forEach((row, idx) => {
+                if (idx === 0) return;
+                const type = row[colIdx('G')];
+                const days = parseFloat(row[colIdx('J')]) || 0;
+                if (specialTypes.includes(type) || (['事假', '病假'].includes(type) && days >= 3)) {
+                    finalData.push(["", getSystem(row[colIdx('B')]), row[colIdx('B')], `${row[colIdx('C')]}．${row[colIdx('D')]}`, type, `${XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('E')]))} - ${XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('F')]))}`, row[colIdx('N')]]);
+                }
+            });
+        });
+
+        // 7. 年資屆滿
+        finalData.push([], ["", "年資屆滿"]);
+        finalData.push(["", "體系", "員工編號", "姓名", "到職日", "屆滿年資", "備註"]);
+        fileStorage.filter(f => f.type === 'active').forEach(f => {
+            f.rows.forEach((row, idx) => {
+                if (idx === 0) return;
+                const s = parseFloat(row[colIdx('BN')]);
+                if (!isNaN(s)) {
+                    const b = Math.floor(s);
+                    if (b >= 1 && s >= b && s <= b + 0.1) {
+                        finalData.push(["", getSystem(row[colIdx('A')]), row[colIdx('A')], `${row[colIdx('E')]}．${row[colIdx('F')]}`, XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('BG')])), `${b}年`, `${row[colIdx('H')]} ${row[colIdx('K')]}`]);
+                    }
+                }
+            });
+        });
+
+        // 8. 留職停薪
+        finalData.push([], ["", "留職停薪"]);
+        finalData.push(["", "體系", "員工編號", "姓名", "留停起日", "留停迄日", "備註"]);
+        fileStorage.filter(f => f.type === 'loa').forEach(f => {
+            f.rows.forEach((row, idx) => {
+                if (idx === 0) return;
+                finalData.push(["", getSystem(row[colIdx('A')]), row[colIdx('B')], row[colIdx('C')], row[colIdx('D')] ? XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('D')])) : "", row[colIdx('E')] ? XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('E')])) : "", row[colIdx('F')] || ""]);
+            });
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(finalData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "月結總表");
+        XLSX.writeFile(wb, `月結報表彙整_${targetMonth}.xlsx`);
+    }
+</script>
+</body>
+</html>
