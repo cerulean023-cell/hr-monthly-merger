@@ -51,14 +51,14 @@
     <header><h1>到職、簽約、離職及年資屆滿名單</h1></header>
 
     <div class="step-card">
-        <div class="step-title"><span class="step-number">0</span>Apollo 下載清單提醒</div>
+        <div class="step-title"><span class="step-number">0</span>下載清單提醒</div>
         <div class="apollo-hint">
             <ul class="checklist">
-                <li class="check-item"><div class="item-name">在職名單 <span class="date-range range-normal">當月1號-月底</span></div><div class="desc">用於：到職、簽約、年資。</div></li>
+                <li class="check-item"><div class="item-name">在職名單 <span class="date-range range-day">當月最後一天</span></div><div class="desc">用於：到職、簽約、年資。</div></li>
                 <li class="check-item"><div class="item-name">人員異動清單 <span class="date-range range-next">當月1號-次月1號</span></div><div class="desc">用於：轉任、復職。</div></li>
                 <li class="check-item"><div class="item-name">離職名單 <span class="date-range range-next">當月1號-次月1號</span></div><div class="desc">用於：離職。</div></li>
                 <li class="check-item"><div class="item-name">留停狀態名單 <span class="date-range range-day">當月最後一天</span></div><div class="desc">用於：留職停薪。</div></li>
-                <li class="check-item"><div class="item-name">請假紀錄 <span class="date-range range-normal">當月1號-月底</span></div><div class="desc">用於：特殊假勤。</div></li>
+                <li class="check-item"><div class="item-name">請假紀錄 <span class="date-range range-normal">當月1號-月底</span></div><div class="desc">用於：特殊假勤 (含取卵假)。</div></li>
             </ul>
         </div>
     </div>
@@ -69,9 +69,9 @@
     </div>
 
     <div class="step-card">
-        <div class="step-title"><span class="step-number">2</span>上傳 Apollo 原始檔</div>
+        <div class="step-title"><span class="step-number">2</span>上傳原始檔案</div>
         <div class="upload-zone" onclick="document.getElementById('excelFiles').click()">
-            <strong>點擊選取或拖放檔案至此</strong>
+            <strong>點擊選取或拖放 Apollo 下載的原始 Excel</strong>
             <input type="file" id="excelFiles" multiple accept=".xlsx, .xls" style="display:none">
         </div>
         <table class="file-table" id="fileTable" style="display:none">
@@ -81,14 +81,13 @@
     </div>
 
     <div id="actionArea" style="display:none; margin-bottom: 50px;">
-        <button class="btn btn-success" onclick="generateReport()">🚀 下載到職、簽約、離職及年資屆滿名單</button>
+        <button class="btn btn-success" onclick="generateReport()">🚀 下載月結彙整報表</button>
     </div>
 
-    <footer class="site-footer">※20260213 版本※</footer>
+    <footer class="site-footer">※20260424 版本※</footer>
 </div>
 
 <script>
-    // --- 樣式與色碼定義 ---
     const COLORS = {
         '到職': 'e4dfec', '簽約': 'f2dcdb', '轉任': 'daeef3', '復職': 'fde9d9',
         '離職': 'd8e4bc', '年資屆滿': 'fcd5b4', '特殊假勤': 'dce6f1', '留職停薪': 'f9c1c4'
@@ -97,22 +96,12 @@
     const BORDER = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
 
     const getStyles = (category) => ({
-        title: {
-            fill: { fgColor: { rgb: COLORS[category] } },
-            font: { bold: true, sz: 12 },
-            alignment: { horizontal: "center", vertical: "center" },
-            border: BORDER
-        },
-        subHeader: {
-            font: { bold: true },
-            alignment: { horizontal: "center" },
-            border: BORDER
-        },
+        title: { fill: { fgColor: { rgb: COLORS[category] } }, font: { bold: true, sz: 12 }, alignment: { horizontal: "center", vertical: "center" }, border: BORDER },
+        subHeader: { font: { bold: true }, alignment: { horizontal: "center" }, border: BORDER },
         normal: { alignment: { horizontal: "center" }, border: BORDER },
         warning: { font: { color: { rgb: "FF0000" }, bold: true }, alignment: { horizontal: "center" }, border: BORDER }
     });
 
-    // --- 輔助函式 ---
     function colIdx(letter) {
         let n = 0;
         for (let i = 0; i < letter.length; i++) n = n * 26 + letter.charCodeAt(i) - 64;
@@ -139,7 +128,6 @@
         return date.getFullYear() === y && (date.getMonth() + 1) === m;
     }
 
-    // 初始化日期
     const now = new Date();
     document.getElementById('targetMonth').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
@@ -190,31 +178,25 @@
         document.getElementById('actionArea').style.display = 'block';
     }
 
-    // 核心資料處理
-    function processRows(sheetData, category, headers, filterFn, mapFn) {
-        const style = getStyles(category);
-        // 大標題 (合併 A-F)
-        sheetData.push([{ v: category, s: style.title }, ...Array(5).fill({v:"", s: style.title})]);
-        // 小標題 (無底色)
-        sheetData.push(headers.map(h => ({ v: h, s: style.subHeader })));
-        
-        filterFn().forEach(row => {
-            const result = mapFn(row);
-            if (result) {
-                sheetData.push(result.map(cell => {
-                    const isWarn = typeof cell === 'string' && cell.includes("請HR確認");
-                    return { v: cell, s: isWarn ? style.warning : style.normal };
-                }));
-            }
+    function addRow(sheetData, rowData, styleType, categoryForTitle = null) {
+        const style = categoryForTitle ? getStyles(categoryForTitle).title : (getStyles('到職')[styleType] || getStyles('到職').normal);
+        const row = rowData.map(cell => {
+            let finalStyle = style;
+            const isWarn = typeof cell === 'string' && cell.includes("請HR確認");
+            if (isWarn) finalStyle = getStyles('到職').warning;
+            return { v: cell, s: finalStyle };
         });
-        sheetData.push([]); // 間隔行
+        sheetData.push(row);
     }
 
     function generateReport() {
         const targetMonth = document.getElementById('targetMonth').value;
-        const monthLabel = `${targetMonth.split('-')[0]}年${targetMonth.split('-')[1]}月`;
+        const [y, mStr] = targetMonth.split('-');
+        const mNum = parseInt(mStr, 10);
+        
         let sheetData = [];
         const merges = [];
+        let detectSystem = "月結報表";
 
         const activeFiles = () => fileStorage.filter(f => f.type === 'active');
         const changeFiles = () => fileStorage.filter(f => f.type === 'change');
@@ -222,112 +204,127 @@
         const leaveFiles = () => fileStorage.filter(f => f.type === 'leave');
         const loaFiles = () => fileStorage.filter(f => f.type === 'loa');
 
+        // 偵測體系
+        if (activeFiles().length > 0 && activeFiles()[0].rows[1]) {
+            detectSystem = getSystem(activeFiles()[0].rows[1][0]) + "月結報表";
+        }
+
         // 1. 到職
-        processRows(sheetData, '到職', ["體系", "員工編號", "姓名", "到職日", "職務", "備註"], 
-            () => activeFiles().flatMap(f => f.rows.slice(1)), 
-            (row) => {
-                const d = toDate(row[colIdx('BG')]);
-                if (!isSameMonth(d, targetMonth)) return null;
-                return [getSystem(row[colIdx('A')]), row[colIdx('A')], `${row[colIdx('E')]||''}．${row[colIdx('F')]||''}`, XLSX.SSF.format('yyyy/mm/dd', d), `${row[colIdx('H')]||''} ${row[colIdx('K')]||''}`, ""];
+        merges.push({ s: { r: sheetData.length, c: 0 }, e: { r: sheetData.length, c: 5 } });
+        addRow(sheetData, [`${mNum}月到職`, "", "", "", "", ""], null, '到職');
+        addRow(sheetData, ["體系", "員工編號", "姓名", "到職日", "職務", "備註"], "subHeader");
+        activeFiles().flatMap(f => f.rows.slice(1)).forEach(row => {
+            const d = toDate(row[colIdx('BG')]);
+            if (isSameMonth(d, targetMonth)) {
+                addRow(sheetData, [getSystem(row[colIdx('A')]), row[colIdx('A')], `${row[colIdx('E')]||''}．${row[colIdx('F')]||''}`, XLSX.SSF.format('yyyy/mm/dd', d), `${row[colIdx('H')]||''} ${row[colIdx('K')]||''}`, ""], "normal");
             }
-        );
+        });
+        sheetData.push([]);
 
         // 2. 簽約
-        processRows(sheetData, '簽約', ["體系", "員編", "姓名", "到職日", "簽約日", "職務"], 
-            () => activeFiles().flatMap(f => f.rows.slice(1)), 
-            (row) => {
-                let probEnd = toDate(row[colIdx('BH')]);
-                if (!probEnd) return null;
+        merges.push({ s: { r: sheetData.length, c: 0 }, e: { r: sheetData.length, c: 5 } });
+        addRow(sheetData, ["簽約", "", "", "", "", ""], null, '簽約');
+        addRow(sheetData, ["體系", "員編", "姓名", "到職日", "簽約日", "職務"], "subHeader");
+        activeFiles().flatMap(f => f.rows.slice(1)).forEach(row => {
+            let probEnd = toDate(row[colIdx('BH')]);
+            if (probEnd) {
                 let signDate = new Date(probEnd); signDate.setDate(signDate.getDate() + 1);
-                if (!isSameMonth(signDate, targetMonth)) return null;
-                return [getSystem(row[colIdx('A')]), row[colIdx('A')], `${row[colIdx('E')]||''}．${row[colIdx('F')]||''}`, XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('BG')])), XLSX.SSF.format('yyyy/mm/dd', signDate), `${row[colIdx('H')]||''} ${row[colIdx('K')]||''}`];
+                if (isSameMonth(signDate, targetMonth)) {
+                    addRow(sheetData, [getSystem(row[colIdx('A')]), row[colIdx('A')], `${row[colIdx('E')]||''}．${row[colIdx('F')]||''}`, XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('BG')])), XLSX.SSF.format('yyyy/mm/dd', signDate), `${row[colIdx('H')]||''} ${row[colIdx('K')]||''}`], "normal");
+                }
             }
-        );
+        });
+        sheetData.push([]);
 
         // 3. 轉任
-        processRows(sheetData, '轉任', ["體系", "員編", "姓名", "到職日", "離職日", "備註"], 
-            () => changeFiles().flatMap(f => f.rows.slice(1)), 
-            (row) => {
-                if (row[colIdx('B')] !== '聘僱公司別異動') return null;
+        merges.push({ s: { r: sheetData.length, c: 0 }, e: { r: sheetData.length, c: 5 } });
+        addRow(sheetData, ["轉任", "", "", "", "", ""], null, '轉任');
+        addRow(sheetData, ["體系", "員編", "姓名", "到職日", "離職日", "備註"], "subHeader");
+        changeFiles().flatMap(f => f.rows.slice(1)).forEach(row => {
+            if (row[colIdx('B')] === '聘僱公司別異動') {
                 let effDate = toDate(row[colIdx('A')]);
-                if (!effDate) return null;
-                let startDate = new Date(effDate); startDate.setDate(startDate.getDate() + 1);
-                return [getSystem(row[colIdx('J')]), row[colIdx('K')], `${row[colIdx('H')]||''}．${row[colIdx('I')]||''}`, XLSX.SSF.format('yyyy/mm/dd', startDate), XLSX.SSF.format('yyyy/mm/dd', effDate), `${row[colIdx('O')]||''} ${row[colIdx('U')]||''}`];
+                if (effDate) {
+                    let startDate = new Date(effDate); startDate.setDate(startDate.getDate() + 1);
+                    addRow(sheetData, [getSystem(row[colIdx('J')]), row[colIdx('K')], `${row[colIdx('H')]||''}．${row[colIdx('I')]||''}`, XLSX.SSF.format('yyyy/mm/dd', startDate), XLSX.SSF.format('yyyy/mm/dd', effDate), `${row[colIdx('O')]||''} ${row[colIdx('U')]||''}`], "normal");
+                }
             }
-        );
+        });
+        sheetData.push([]);
 
         // 4. 復職
-        processRows(sheetData, '復職', ["體系", "員工編號", "姓名", "到職日", "職務", "備註"], 
-            () => changeFiles().flatMap(f => f.rows.slice(1)), 
-            (row) => {
-                if (row[colIdx('B')] !== '復職') return null;
-                return [getSystem(row[colIdx('K')]), row[colIdx('K')], `${row[colIdx('H')]||''}．${row[colIdx('I')]||''}`, XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('A')])), `${row[colIdx('O')]||''} ${row[colIdx('U')]||''}`, ""];
+        merges.push({ s: { r: sheetData.length, c: 0 }, e: { r: sheetData.length, c: 5 } });
+        addRow(sheetData, ["復職", "", "", "", "", ""], null, '復職');
+        addRow(sheetData, ["體系", "員工編號", "姓名", "到職日", "職務", "備註"], "subHeader");
+        changeFiles().flatMap(f => f.rows.slice(1)).forEach(row => {
+            if (row[colIdx('B')] === '復職') {
+                addRow(sheetData, [getSystem(row[colIdx('K')]), row[colIdx('K')], `${row[colIdx('H')]||''}．${row[colIdx('I')]||''}`, XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('A')])), `${row[colIdx('O')]||''} ${row[colIdx('U')]||''}`, ""], "normal");
             }
-        );
+        });
+        sheetData.push([]);
 
         // 5. 離職
-        processRows(sheetData, '離職', ["體系", "員編", "姓名", "到職日", "離職日", "備註"], 
-            () => quitFiles().flatMap(f => f.rows.slice(1)), 
-            (row) => {
-                let effDate = toDate(row[colIdx('A')]);
-                if (!effDate) return null;
+        merges.push({ s: { r: sheetData.length, c: 0 }, e: { r: sheetData.length, c: 5 } });
+        addRow(sheetData, ["離職", "", "", "", "", ""], null, '離職');
+        addRow(sheetData, ["體系", "員編", "姓名", "到職日", "離職日", "備註"], "subHeader");
+        quitFiles().flatMap(f => f.rows.slice(1)).forEach(row => {
+            let effDate = toDate(row[colIdx('A')]);
+            if (effDate) {
                 let realQuit = new Date(effDate); realQuit.setDate(realQuit.getDate() - 1);
-                if (!isSameMonth(realQuit, targetMonth)) return null;
-                return [getSystem(row[colIdx('C')]), row[colIdx('C')], `${row[colIdx('G')]||''}．${row[colIdx('H')]||''}`, XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('BI')])), XLSX.SSF.format('yyyy/mm/dd', realQuit), `${row[colIdx('O')]||''} ${row[colIdx('U')]||''}`];
+                if (isSameMonth(realQuit, targetMonth)) {
+                    addRow(sheetData, [getSystem(row[colIdx('C')]), row[colIdx('C')], `${row[colIdx('G')]||''}．${row[colIdx('H')]||''}`, XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('BI')])), XLSX.SSF.format('yyyy/mm/dd', realQuit), `${row[colIdx('J')]||''} ${row[colIdx('N')]||''} ${row[colIdx('B')]||''}`], "normal");
+                }
             }
-        );
+        });
+        sheetData.push([]);
 
         // 6. 年資屆滿
-        processRows(sheetData, '年資屆滿', ["體系", "員工編號", "姓名", "到職日", "屆滿年資", "職務"], 
-            () => activeFiles().flatMap(f => f.rows.slice(1)), 
-            (row) => {
-                const s = parseFloat(row[colIdx('BN')]);
-                if (isNaN(s)) return null;
+        merges.push({ s: { r: sheetData.length, c: 0 }, e: { r: sheetData.length, c: 5 } });
+        addRow(sheetData, ["年資屆滿", "", "", "", "", ""], null, '年資屆滿');
+        addRow(sheetData, ["體系", "員工編號", "姓名", "到職日", "屆滿年資", "職務"], "subHeader");
+        activeFiles().flatMap(f => f.rows.slice(1)).forEach(row => {
+            const s = parseFloat(row[colIdx('BN')]);
+            const pos = (row[colIdx('K')] || "").toString();
+            if (!isNaN(s)) {
                 const floorS = Math.floor(s);
-                if (floorS >= 1 && s >= floorS && s <= (floorS + 0.1)) {
-                    return [getSystem(row[colIdx('A')]), row[colIdx('A')], `${row[colIdx('E')]||''}．${row[colIdx('F')]||''}`, XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('BG')])), `${s}年`, `${row[colIdx('H')]||''} ${row[colIdx('K')]||''}`];
+                const isDoc = pos.includes("醫師");
+                const isPT = pos.includes("兼職");
+                if (floorS >= 1 && s >= floorS && s <= (floorS + 0.1) && s < 10 && !isDoc && !isPT) {
+                    addRow(sheetData, [getSystem(row[colIdx('A')]), row[colIdx('A')], `${row[colIdx('E')]||''}．${row[colIdx('F')]||''}`, XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('BG')])), `${s}年`, `${row[colIdx('H')]||''} ${row[colIdx('K')]||''}`], "normal");
                 }
-                return null;
             }
-        );
+        });
+        sheetData.push([]);
 
         // 7. 特殊假勤
-        processRows(sheetData, '特殊假勤', ["體系", "員工編號", "姓名", "假勤項目", "假勤時間", "備註"], 
-            () => leaveFiles().flatMap(f => f.rows.slice(1)), 
-            (row) => {
-                const type = row[colIdx('G')], days = parseFloat(row[colIdx('J')]) || 0;
-                const special = ['喪假', '婚假', '產假', '產檢假', '公傷假', '歲時祭儀'];
-                if (special.includes(type) || (['事假', '病假'].includes(type) && days >= 3)) {
-                    return [getSystem(row[colIdx('B')]), row[colIdx('B')], `${row[colIdx('C')]||''}．${row[colIdx('D')]||''}`, type, `${XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('E')]))} - ${XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('F')]))}`, row[colIdx('N')]||""];
-                }
-                return null;
+        merges.push({ s: { r: sheetData.length, c: 0 }, e: { r: sheetData.length, c: 5 } });
+        addRow(sheetData, ["特殊假勤", "", "", "", "", ""], null, '特殊假勤');
+        addRow(sheetData, ["體系", "員工編號", "姓名", "假勤項目", "假勤時間", "備註"], "subHeader");
+        leaveFiles().flatMap(f => f.rows.slice(1)).forEach(row => {
+            const type = row[colIdx('G')], days = parseFloat(row[colIdx('J')]) || 0;
+            const special = ['喪假', '婚假', '產假', '產檢假', '公傷假', '歲時祭儀', '取卵假'];
+            if (special.includes(type) || (['事假', '病假'].includes(type) && days >= 3)) {
+                addRow(sheetData, [getSystem(row[colIdx('B')]), row[colIdx('B')], `${row[colIdx('C')]||''}．${row[colIdx('D')]||''}`, type, `${XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('E')]))} - ${XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('F')]))}`, row[colIdx('N')]||""], "normal");
             }
-        );
+        });
+        sheetData.push([]);
 
         // 8. 留職停薪
-        processRows(sheetData, '留職停薪', ["體系", "員工編號", "姓名", "留停起迄日", "保險", "備註"], 
-            () => loaFiles().flatMap(f => f.rows.slice(1)), 
-            (row) => {
-                if (!row[colIdx('A')]) return null;
-                return [getSystem(row[colIdx('B')]), row[colIdx('B')], `${row[colIdx('F')]||''}．${row[colIdx('G')]||''}`, XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('A')])) + " - 請HR確認留停迄日", "請HR確認勞健退狀態", ""];
-            }
-        );
-
-        // 計算合併
-        sheetData.forEach((row, i) => {
-            if (row.length > 0 && typeof row[0].v === 'string' && COLORS[row[0].v]) {
-                merges.push({ s: { r: i, c: 0 }, e: { r: i, c: 5 } });
+        merges.push({ s: { r: sheetData.length, c: 0 }, e: { r: sheetData.length, c: 5 } });
+        addRow(sheetData, ["留職停薪", "", "", "", "", ""], null, '留職停薪');
+        addRow(sheetData, ["體系", "員工編號", "姓名", "留停起迄日", "保險", "備註"], "subHeader");
+        loaFiles().flatMap(f => f.rows.slice(1)).forEach(row => {
+            if (row[colIdx('A')]) {
+                addRow(sheetData, [getSystem(row[colIdx('B')]), row[colIdx('B')], `${row[colIdx('F')]||''}．${row[colIdx('G')]||''}`, XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('A')])) + " - 請HR確認留停迄日", "請HR確認勞健退狀態", ""], "normal");
             }
         });
 
-        const ws = { '!ref': `A1:G${sheetData.length}`, '!merges': merges, '!cols': Array(7).fill({ wch: 18 }) };
+        const ws = { '!ref': `A1:G${sheetData.length}`, '!merges': merges, '!cols': Array(7).fill({ wch: 22 }) };
         sheetData.forEach((row, r) => row.forEach((cell, c) => { ws[XLSX.utils.encode_cell({ r, c })] = cell; }));
 
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "月結總表");
-        XLSX.writeFile(wb, `月結報表彙整_${targetMonth}.xlsx`);
+        XLSX.writeFile(wb, `${mNum}月${detectSystem}.xlsx`);
     }
 </script>
 </body>
 </html>
-
