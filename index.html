@@ -5,86 +5,201 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>到職、簽約、離職及年資屆滿名單</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #2563eb;
-            --secondary-color: #64748b;
-            --success-color: #10b981;
-            --bg-color: #f8fafc;
-            --card-bg: #ffffff;
-            --border-color: #e2e8f0;
-            --text-main: #1e293b;
+            --paper: #ffffff;
+            --bg: #fafafa;
+            --ink: #1f1f1f;
+            --ink-soft: #767676;
+            --line: #e6e6e6;
+            --primary: #2f6f5c;
+            --primary-tint: #eef4f1;
+            --warn: #b93f31;
+            --warn-tint: #fbeae7;
+            --accent-tint: #f2f2f2;
         }
-        body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; line-height: 1.6; }
-        .container { max-width: 1000px; margin: auto; }
-        header { text-align: center; margin-bottom: 30px; padding: 20px 0; }
-        header h1 { font-size: 2.2rem; color: var(--primary-color); margin: 0; }
-        .step-card { background: var(--card-bg); border-radius: 16px; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-bottom: 24px; border: 1px solid var(--border-color); }
-        .step-title { display: flex; align-items: center; font-size: 1.2rem; font-weight: 700; margin-bottom: 15px; color: var(--primary-color); }
-        .step-number { background: var(--primary-color); color: white; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 0.85rem; }
-        .apollo-hint { background: #fffcf0; border: 1px solid #fde68a; border-radius: 12px; padding: 20px; }
-        .checklist { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
-        .check-item { background: white; padding: 12px 15px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; }
-        .item-name { font-weight: 700; color: #334155; display: flex; justify-content: space-between; align-items: center; }
-        .date-range { font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
-        .range-normal { background: #dcfce7; color: #166534; }
-        .range-next { background: #fee2e2; color: #991b1b; }
-        .range-day { background: #e0f2fe; color: #075985; }
-        .desc { font-size: 0.8rem; color: #64748b; margin-top: 4px; }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+            background: var(--bg);
+            color: var(--ink);
+            margin: 0;
+            padding: 48px 20px 72px;
+            line-height: 1.65;
+        }
+
+        .container { max-width: 760px; margin: auto; }
+
+        header { margin-bottom: 36px; }
+        header h1 {
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin: 0 0 8px;
+            color: var(--ink);
+        }
+        header p { margin: 0; color: var(--ink-soft); font-size: 0.9rem; }
+
+        .step { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 24px; }
+        .step-number {
+            flex: 0 0 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 1px solid var(--ink);
+            color: var(--ink);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 2px;
+        }
+        .step-body { flex: 1; min-width: 0; }
+
+        .step-card {
+            background: var(--paper);
+            border-radius: 10px;
+            padding: 22px 24px;
+            border: 1px solid var(--line);
+        }
+        .step-title { font-weight: 700; font-size: 1rem; margin: 0 0 16px; }
+        .step-hint { font-size: 0.82rem; color: var(--ink-soft); margin: -10px 0 16px; }
+
+        .checklist { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px; }
+        .check-item {
+            background: var(--bg);
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--line);
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .item-name { font-weight: 600; color: var(--ink); display: flex; justify-content: space-between; align-items: center; font-size: 0.88rem; }
+        .date-range { font-size: 0.68rem; padding: 2px 8px; border-radius: 4px; font-weight: 600; white-space: nowrap; }
+        .range-normal { background: var(--primary-tint); color: var(--primary); }
+        .range-next { background: var(--warn-tint); color: var(--warn); }
+        .range-day { background: var(--accent-tint); color: var(--ink-soft); }
+        .desc { font-size: 0.76rem; color: var(--ink-soft); }
+
         .config-group { display: flex; align-items: center; gap: 15px; }
-        input[type="month"] { padding: 10px 16px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; outline: none; }
-        .upload-zone { border: 2px dashed var(--primary-color); background: #eff6ff; padding: 30px; border-radius: 12px; text-align: center; cursor: pointer; transition: 0.2s; }
-        .upload-zone:hover { background: #dbeafe; }
-        .file-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        .file-table th { text-align: left; padding: 10px; border-bottom: 2px solid var(--border-color); color: var(--secondary-color); }
-        .file-table td { padding: 12px 10px; border-bottom: 1px solid var(--border-color); }
-        select { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: white; width: 100%; }
-        .btn { display: inline-flex; align-items: center; justify-content: center; padding: 15px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; font-size: 1.1rem; transition: 0.2s; }
-        .btn-success { background: var(--success-color); color: white; width: 100%; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
-        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(16, 185, 129, 0.3); }
-        footer.site-footer { text-align: center; margin-top: 50px; padding-bottom: 20px; color: var(--secondary-color); font-size: 0.75rem; }
+        input[type="month"] {
+            padding: 10px 14px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            outline: none;
+            background: var(--paper);
+            color: var(--ink);
+        }
+        input[type="month"]:focus { border-color: var(--primary); }
+
+        .upload-zone {
+            border: 1px dashed var(--line);
+            background: var(--bg);
+            padding: 28px 20px;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color .15s;
+        }
+        .upload-zone:hover { border-color: var(--primary); }
+        .upload-zone strong { color: var(--ink); font-weight: 600; font-size: 0.9rem; display: block; }
+        .upload-zone .sub { display: block; margin-top: 4px; font-size: 0.76rem; color: var(--ink-soft); }
+
+        .file-table { width: 100%; border-collapse: collapse; margin-top: 18px; }
+        .file-table th {
+            text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line);
+            color: var(--ink-soft); font-size: 0.76rem; font-weight: 600;
+        }
+        .file-table td { padding: 10px; border-bottom: 1px solid var(--line); font-size: 0.88rem; }
+        .badge { font-size: 0.76rem; background: var(--primary-tint); color: var(--primary); padding: 2px 8px; border-radius: 5px; }
+        select {
+            padding: 7px 10px; border-radius: 6px; border: 1px solid var(--line);
+            background: #fff; width: 100%; font-family: inherit; color: var(--ink); font-size: 0.86rem;
+        }
+        select:focus { outline: none; border-color: var(--primary); }
+
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 13px 20px; border-radius: 8px; font-weight: 600; cursor: pointer;
+            border: none; font-size: 0.95rem; transition: background .15s;
+            font-family: "Noto Sans TC", sans-serif;
+        }
+        .btn-success { background: var(--primary); color: #fff; width: 100%; }
+        .btn-success:hover { background: #24594a; }
+
+        footer.site-footer {
+            text-align: center; margin-top: 40px; color: var(--ink-soft); font-size: 0.72rem;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header><h1>到職、簽約、離職及年資屆滿名單</h1></header>
+    <header>
+        <h1>到職、簽約、離職及年資屆滿名單</h1>
+        <p>上傳 Apollo 匯出的原始 Excel，依結算月份自動彙整為單一報表。</p>
+    </header>
 
-    <div class="step-card">
-        <div class="step-title"><span class="step-number">0</span>下載清單提醒</div>
-        <div class="apollo-hint">
-            <ul class="checklist">
-                <li class="check-item"><div class="item-name">在職名單 <span class="date-range range-day">當月最後一天</span></div><div class="desc">用於：到職、簽約、年資。</div></li>
-                <li class="check-item"><div class="item-name">人員異動清單 <span class="date-range range-next">當月1號-次月1號</span></div><div class="desc">用於：轉任、復職。</div></li>
-                <li class="check-item"><div class="item-name">離職名單 <span class="date-range range-next">當月1號-次月1號</span></div><div class="desc">用於：離職。</div></li>
-                <li class="check-item"><div class="item-name">留停狀態名單 <span class="date-range range-day">當月最後一天</span></div><div class="desc">用於：留職停薪。</div></li>
-                <li class="check-item"><div class="item-name">請假紀錄 <span class="date-range range-normal">當月1號-月底</span></div><div class="desc">用於：特殊假勤 (含取卵假)。</div></li>
-            </ul>
+    <div class="step">
+        <div class="step-number">0</div>
+        <div class="step-body">
+            <div class="step-card">
+                <div class="step-title">下載清單提醒</div>
+                <div class="step-hint">依下列區間從 Apollo 下載對應名單，再進行上傳。</div>
+                <ul class="checklist">
+                    <li class="check-item"><div class="item-name">在職名單 <span class="date-range range-day">當月最後一天</span></div><div class="desc">用於：到職、簽約、年資。</div></li>
+                    <li class="check-item"><div class="item-name">人員異動清單 <span class="date-range range-next">當月1號-次月1號</span></div><div class="desc">用於：轉任、復職。</div></li>
+                    <li class="check-item"><div class="item-name">離職名單 <span class="date-range range-next">當月1號-次月1號</span></div><div class="desc">用於：離職。</div></li>
+                    <li class="check-item"><div class="item-name">留停狀態名單 <span class="date-range range-day">當月最後一天</span></div><div class="desc">用於：留職停薪。</div></li>
+                    <li class="check-item"><div class="item-name">請假紀錄 <span class="date-range range-normal">當月1號-月底</span></div><div class="desc">用於：特殊假勤 (含取卵假)。</div></li>
+                </ul>
+            </div>
         </div>
     </div>
 
-    <div class="step-card">
-        <div class="step-title"><span class="step-number">1</span>設定結算月份</div>
-        <div class="config-group"><input type="month" id="targetMonth" /></div>
-    </div>
-
-    <div class="step-card">
-        <div class="step-title"><span class="step-number">2</span>上傳原始檔案</div>
-        <div class="upload-zone" onclick="document.getElementById('excelFiles').click()">
-            <strong>點擊選取或拖放 Apollo 下載的原始 Excel</strong>
-            <input type="file" id="excelFiles" multiple accept=".xlsx, .xls" style="display:none">
+    <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-body">
+            <div class="step-card">
+                <div class="step-title">設定結算月份</div>
+                <div class="config-group"><input type="month" id="targetMonth" /></div>
+            </div>
         </div>
-        <table class="file-table" id="fileTable" style="display:none">
-            <thead><tr><th>檔名</th><th width="100">筆數</th><th width="250">資料識別</th></tr></thead>
-            <tbody id="fileList"></tbody>
-        </table>
     </div>
 
-    <div id="actionArea" style="display:none; margin-bottom: 50px;">
-        <button class="btn btn-success" onclick="generateReport()">🚀 下載月結彙整報表</button>
+    <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-body">
+            <div class="step-card">
+                <div class="step-title">上傳原始檔案</div>
+                <div class="upload-zone" onclick="document.getElementById('excelFiles').click()">
+                    <strong>點擊選取或拖放 Apollo 下載的原始 Excel</strong>
+                    <span class="sub">支援同時選取多個 .xlsx / .xls 檔案</span>
+                    <input type="file" id="excelFiles" multiple accept=".xlsx, .xls" style="display:none">
+                </div>
+                <table class="file-table" id="fileTable" style="display:none">
+                    <thead><tr><th>檔名</th><th width="100">筆數</th><th width="250">資料識別</th></tr></thead>
+                    <tbody id="fileList"></tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
-    <footer class="site-footer">※20260424 版本※</footer>
+    <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-body">
+            <div id="actionArea" style="display:none;">
+                <button class="btn btn-success" onclick="generateReport()">下載月結彙整報表</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="site-footer">※20260720 版本※</footer>
 </div>
 
 <script>
@@ -193,6 +308,7 @@
         const targetMonth = document.getElementById('targetMonth').value;
         const [y, mStr] = targetMonth.split('-');
         const mNum = parseInt(mStr, 10);
+        const yNum = parseInt(y, 10);
         
         let sheetData = [];
         const merges = [];
@@ -277,19 +393,19 @@
         });
         sheetData.push([]);
 
-        // 6. 年資屆滿
+        // 6. 年資屆滿（以內部年資起算日 BM 欄為判斷基準）
         merges.push({ s: { r: sheetData.length, c: 0 }, e: { r: sheetData.length, c: 5 } });
         addRow(sheetData, ["年資屆滿", "", "", "", "", ""], null, '年資屆滿');
         addRow(sheetData, ["體系", "員工編號", "姓名", "到職日", "屆滿年資", "職務"], "subHeader");
         activeFiles().flatMap(f => f.rows.slice(1)).forEach(row => {
-            const s = parseFloat(row[colIdx('BN')]);
+            const bmDate = toDate(row[colIdx('BM')]);
             const pos = (row[colIdx('K')] || "").toString();
-            if (!isNaN(s)) {
-                const floorS = Math.floor(s);
+            if (bmDate && (bmDate.getMonth() + 1) === mNum) {
+                const years = yNum - bmDate.getFullYear();
                 const isDoc = pos.includes("醫師");
                 const isPT = pos.includes("兼職");
-                if (floorS >= 1 && s >= floorS && s <= (floorS + 0.1) && s < 10 && !isDoc && !isPT) {
-                    addRow(sheetData, [getSystem(row[colIdx('A')]), row[colIdx('A')], `${row[colIdx('E')]||''}．${row[colIdx('F')]||''}`, XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('BG')])), `${s}年`, `${row[colIdx('H')]||''} ${row[colIdx('K')]||''}`], "normal");
+                if (years >= 1 && years < 10 && !isDoc && !isPT) {
+                    addRow(sheetData, [getSystem(row[colIdx('A')]), row[colIdx('A')], `${row[colIdx('E')]||''}．${row[colIdx('F')]||''}`, XLSX.SSF.format('yyyy/mm/dd', toDate(row[colIdx('BG')])), `${years}年`, `${row[colIdx('H')]||''} ${row[colIdx('K')]||''}`], "normal");
                 }
             }
         });
